@@ -1,0 +1,209 @@
+-- 🧠 Brainrot Spawner GUI — Made by Siva
+
+if game.CoreGui:FindFirstChild("BrainrotSpawnerGUI") then
+	game.CoreGui.BrainrotSpawnerGUI:Destroy()
+end
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RS = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+
+-- Conch remotes
+local CONCH = RS:WaitForChild("conch_networking", 5)
+local INVOKE = CONCH and CONCH:WaitForChild("invoke_server_command", 5)
+
+local INVOKE_ID = {
+	addbrainrot = 6, -- you can change this if different
+}
+
+local function sendInvokeExact(name, args_tbl)
+	if not INVOKE then return false, "invoke_remote_not_found" end
+	local payload = { invoke_id = INVOKE_ID[name] or 1, name = name, args = args_tbl or {} }
+	local ok, err = pcall(function() INVOKE:FireServer(payload) end)
+	return ok, ok and "invoke" or tostring(err)
+end
+
+-- GUI Setup
+local gui = Instance.new("ScreenGui")
+gui.Name = "BrainrotSpawnerGUI"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.Parent = game.CoreGui
+
+local function r(obj, radius)
+	local c = Instance.new("UICorner", obj)
+	c.CornerRadius = UDim.new(0, radius or 8)
+	return c
+end
+
+local function padL(obj, amount)
+	local p = Instance.new("UIPadding", obj)
+	p.PaddingLeft = UDim.new(0, amount or 6)
+	return p
+end
+
+local function mkButton(parent, text, callback, color)
+	local btn = Instance.new("TextButton", parent)
+	btn.Size = UDim2.new(1, 0, 0, 28)
+	btn.BackgroundColor3 = color or Color3.fromRGB(255, 100, 100)
+	btn.Text = text
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 10
+	btn.TextColor3 = Color3.new(1,1,1)
+	btn.AutoButtonColor = false
+	btn.BorderSizePixel = 0
+	r(btn, 6)
+	btn.MouseEnter:Connect(function() btn.BackgroundTransparency = 0.2 end)
+	btn.MouseLeave:Connect(function() btn.BackgroundTransparency = 0 end)
+	btn.MouseButton1Click:Connect(callback)
+	return btn
+end
+
+local function mkTextBox(parent, placeholder, defaultText)
+	local box = Instance.new("TextBox", parent)
+	box.Size = UDim2.new(1, 0, 0, 28)
+	box.BackgroundColor3 = Color3.fromRGB(28,30,38)
+	box.Text = defaultText or ""
+	box.PlaceholderText = placeholder
+	box.PlaceholderColor3 = Color3.fromRGB(100,110,130)
+	box.TextColor3 = Color3.fromRGB(220,225,240)
+	box.Font = Enum.Font.Gotham
+	box.TextSize = 10
+	box.BorderSizePixel = 0
+	box.ClearTextOnFocus = false
+	r(box, 6)
+	padL(box, 8)
+	return box
+end
+
+local function mkSection(parent, title)
+	local section = Instance.new("Frame")
+	section.Size = UDim2.new(1,0,0,0)
+	section.BackgroundTransparency = 1
+	section.AutomaticSize = Enum.AutomaticSize.Y
+	section.Parent = parent
+
+	local layout = Instance.new("UIListLayout", section)
+	layout.Padding = UDim.new(0,5)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+	if title then
+		local lbl = Instance.new("TextLabel", section)
+		lbl.Size = UDim2.new(1,0,0,16)
+		lbl.Text = title
+		lbl.Font = Enum.Font.GothamBold
+		lbl.TextSize = 11
+		lbl.TextColor3 = Color3.new(1,1,1)
+		lbl.BackgroundTransparency = 1
+		lbl.LayoutOrder = 0
+	end
+	return section
+end
+
+-- MAIN FRAME
+local main = Instance.new("Frame", gui)
+main.Size = UDim2.fromOffset(420, 300)
+main.Position = UDim2.new(0.5, -210, 0.5, -150)
+main.BackgroundColor3 = Color3.fromRGB(18,20,26)
+main.BorderSizePixel = 0
+main.ClipsDescendants = true
+r(main, 10)
+
+-- DRAG FUNCTIONALITY
+local dragging, dragStart, startPos
+local titleBar = Instance.new("Frame", main)
+titleBar.Size = UDim2.new(1,0,0,35)
+titleBar.BackgroundColor3 = Color3.fromRGB(25,27,35)
+titleBar.BorderSizePixel = 0
+r(titleBar, 10)
+
+titleBar.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = main.Position
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+		local delta = input.Position - dragStart
+		main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = false
+	end
+end)
+
+-- TITLE
+local title = Instance.new("TextLabel", titleBar)
+title.Size = UDim2.new(0,150,1,0)
+title.Position = UDim2.fromOffset(12,0)
+title.BackgroundTransparency = 1
+title.Text = "Brainrot Spawner"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+title.TextColor3 = Color3.new(1,1,1)
+title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- CLOSE BUTTON
+local closeBtn = Instance.new("TextButton", titleBar)
+closeBtn.Size = UDim2.fromOffset(28,28)
+closeBtn.Position = UDim2.new(1,-32,0,3)
+closeBtn.Text = "×"
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 18
+closeBtn.TextColor3 = Color3.fromRGB(255,100,100)
+closeBtn.BackgroundColor3 = Color3.fromRGB(35,37,45)
+closeBtn.BorderSizePixel = 0
+r(closeBtn, 6)
+closeBtn.MouseButton1Click:Connect(function() main.Visible = false end)
+
+-- MINIMIZE BUTTON
+local minimizeBtn = Instance.new("TextButton", titleBar)
+minimizeBtn.Size = UDim2.fromOffset(28,28)
+minimizeBtn.Position = UDim2.new(1,-68,0,3)
+minimizeBtn.Text = "–"
+minimizeBtn.Font = Enum.Font.GothamBold
+minimizeBtn.TextSize = 18
+minimizeBtn.TextColor3 = Color3.fromRGB(255,255,255)
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(35,37,45)
+minimizeBtn.BorderSizePixel = 0
+r(minimizeBtn, 6)
+
+local minimized = false
+local fullSize = main.Size
+minimizeBtn.MouseButton1Click:Connect(function()
+	minimized = not minimized
+	if minimized then
+		TweenService:Create(main, TweenInfo.new(0.4), {Size=UDim2.new(0,420,0,45)}):Play()
+	else
+		TweenService:Create(main, TweenInfo.new(0.4), {Size=fullSize}):Play()
+	end
+end)
+
+-- CONTENT FRAME
+local content = Instance.new("ScrollingFrame", main)
+content.Size = UDim2.new(1, -10, 1, -45)
+content.Position = UDim2.fromOffset(5,35)
+content.BackgroundTransparency = 1
+content.BorderSizePixel = 0
+content.ScrollBarThickness = 3
+content.ScrollBarImageColor3 = Color3.fromRGB(88,101,242)
+
+local layout = Instance.new("UIListLayout", content)
+layout.Padding = UDim.new(0,6)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+-- SPAWN SECTION
+local section = mkSection(content, "Spawn Brainrots")
+local nameBox = mkTextBox(section, "Pet Name", "Strawberry Elephant")
+local mutBox = mkTextBox(section, "Mutation", "Normal")
+mkButton(section, "SPAWN", function()
+	sendInvokeExact("addbrainrot", { player.Name, nameBox.Text, mutBox.Text })
+end)
